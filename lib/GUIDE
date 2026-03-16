@@ -1,0 +1,94 @@
+# Riverpod Learning Guide
+
+Follow this in order. Each concept builds on the previous one.
+
+---
+
+## Prerequisites
+- Basic Flutter & Dart knowledge
+- Understanding of StatefulWidget and setState
+- Add `flutter_riverpod` to your pubspec.yaml
+- Wrap your app with `ProviderScope` in main.dart
+
+---
+
+## Part 1 — Core Providers
+
+**1. Provider**
+The base and simplest provider. Holds a value that never changes on its own.
+Use when you have a constant or computed value that doesn't need to update.
+
+**2. StateProvider**
+Holds a single simple value (int, String, bool) that can change.
+Use for counters, toggles, tab index, or any single primitive value that changes.
+
+**3. Consumer & ConsumerStatefulWidget**
+Widgets that let you read and watch providers inside your UI.
+Learn this before writing any UI — every widget that touches a provider needs this.
+
+**4. StateNotifierProvider**
+For complex state with multiple fields or multiple operations. Logic lives in a separate class.
+Use when StateProvider is not enough — lists, forms, objects, multiple update methods.
+
+**5. FutureProvider**
+Handles a one-time async operation. Gives you loading, error, and data states automatically.
+Use for API calls or any async task that runs once when a screen loads.
+
+**6. StreamProvider**
+Like FutureProvider but for continuous data that keeps updating over time.
+Use for real-time data — Firebase snapshots, WebSockets, live feeds.
+
+**7. API Calls with Riverpod**
+Practical application of FutureProvider with a real REST API.
+Covers how to structure models, providers, and UI together cleanly.
+Do this before moving to modern providers.
+
+**8. NotifierProvider**
+Modern replacement for StateNotifierProvider. Cleaner syntax, same power.
+Prefer this over StateNotifierProvider in all new projects.
+
+**9. AsyncNotifierProvider**
+Modern replacement for FutureProvider when you also need actions on top of async state.
+Use when you need to fetch data AND also call methods like refresh, add, or delete.
+
+---
+
+## Part 2 — Modifiers
+
+Learn these after you are comfortable with all providers above.
+Modifiers are not new providers — they are add-ons that change how any provider behaves.
+
+**10. Family Modifier**
+Lets you pass an argument to a provider. Each unique argument creates its own instance.
+Use when you need the same provider logic for different data — fetch by ID, filter by category.
+
+**11. AutoDispose Modifier**
+Automatically destroys a provider when no widget is watching it anymore.
+Use for screen-specific providers to prevent memory leaks and avoid stale data.
+
+**12. Family + AutoDispose Combined**
+The most common real-world pattern. Use when you need both — parameterized and auto-cleaned providers.
+
+---
+
+## Part 3 — Advanced
+
+**13. Provider Dependencies**
+Providers that watch other providers. When a dependency changes, everything that depends on it updates automatically.
+Use for derived state, filtered lists, or anything where one value depends on another.
+
+---
+
+## Quick Provider Picker
+
+| Situation                   | Use
+|                             |
+| Constant or computed value  | Provider
+| Simple value that changes   | StateProvider
+| Complex state with methods  | NotifierProvider
+| One-time async / API call   | FutureProvider
+| Real-time / stream data     | StreamProvider
+| Async state + actions       | AsyncNotifierProvider
+| Provider needs an argument  | add .family
+| Screen-specific provider    | add .autoDispose
+| Provider depends on another | ref.watch() inside provider
