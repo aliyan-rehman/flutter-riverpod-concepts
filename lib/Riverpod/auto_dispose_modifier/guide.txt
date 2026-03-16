@@ -1,0 +1,148 @@
+================================================================
+     AutoDispose Modifier in Flutter Riverpod
+================================================================
+
+WHAT IS autoDispose?
+--------------------
+By default, providers stay alive in memory even when no widget is
+using them. autoDispose destroys the provider automatically when
+nothing is watching it anymore.
+
+
+WHY USE IT?
+-----------
+Without autoDispose:
+  - Open screen → provider created
+  - Leave screen → provider STILL in memory (wasted memory)
+  - Open again   → stale data may show
+
+With autoDispose:
+  - Open screen → provider created
+  - Leave screen → provider DESTROYED automatically ✅
+
+
+================================================================
+BASIC SYNTAX
+================================================================
+
+// Without autoDispose (lives forever)
+final counterProvider = StateProvider<int>((ref) => 0);
+
+// With autoDispose (destroyed when no one watches)
+final counterProvider = StateProvider.autoDispose<int>((ref) => 0);
+
+// Same for FutureProvider
+final userProvider = FutureProvider.autoDispose<User>((ref) async {
+  return await fetchUser();
+});
+
+// Same for NotifierProvider
+final todosProvider = NotifierProvider.autoDispose<TodosNotifier, List<String>>(
+  TodosNotifier.new,
+);
+
+
+================================================================
+COMBINING WITH FAMILY (Most Common Real-World Use)
+================================================================
+
+final userByIdProvider = FutureProvider.autoDispose.family<String, int>(
+  (ref, userId) async {
+    return await fetchUser(userId);
+  },
+);
+
+// How to use it:
+ref.watch(userByIdProvider(1));   // user with id 1
+ref.watch(userByIdProvider(42));  // user with id 42
+
+// Each (provider + argument) combo is disposed separately
+// userByIdProvider(1) and userByIdProvider(42) are independent
+
+
+================================================================
+ref.keepAlive() — PREVENT DISPOSE WHEN NEEDED
+================================================================
+
+Use this when you want caching — fetch once, keep in memory.
+
+final userByIdProvider = FutureProvider.autoDispose.family<String, int>(
+  (ref, userId) async {
+    ref.keepAlive(); // won't be destroyed even if no one watches
+
+    return await fetchUser(userId);
+  },
+);
+
+Good for: manual caching, expensive API calls you don't want to repeat.
+
+
+================================================================
+ref.onDispose() — RUN CLEANUP WHEN PROVIDER IS DESTROYED
+================================================================
+
+Use this to cancel requests, close controllers, stop timers etc.
+
+final searchProvider = StateProvider.autoDispose<String>((ref) {
+  ref.onDispose(() {
+    print('search provider was disposed!');
+    // cancel timers, close TextEditingController, cancel http, etc.
+  });
+
+  return '';
+});
+
+
+================================================================
+WHEN TO USE autoDispose?
+================================================================
+
+USE autoDispose ✅         |  DON'T USE autoDispose ❌
+---------------------------|-------------------------------
+Detail/product screens     |  Auth state (user login)
+Search / filter providers  |  App theme / settings
+API calls for one screen   |  Shopping cart
+Form state                 |  Global app-wide state
+
+
+================================================================
+QUICK CHEAT SHEET
+================================================================
+
+Basic:
+  StateProvider.autoDispose<Type>((ref) => value);
+
+With Future:
+  FutureProvider.autoDispose<Type>((ref) async => value);
+
+With Family:
+  FutureProvider.autoDispose.family<ReturnType, ArgType>((ref, arg) async => value);
+
+Keep alive:
+  ref.keepAlive();   // inside the provider body
+
+Cleanup:
+  ref.onDispose(() { /* cleanup code */ });
+
+
+================================================================
+FULL SNIPPET (copy-paste practice)
+================================================================
+
+// Provider
+final postProvider = FutureProvider.autoDispose.family<String, int>(
+  (ref, postId) async {
+    ref.onDispose(() => print('postProvider($postId) disposed'));
+    return 'Post #$postId content';
+  },
+);
+
+// Widget
+// final post = ref.watch(postProvider(5));
+// post.when(
+//   data: (data) => Text(data),
+//   loading: () => CircularProgressIndicator(),
+//   error: (e, _) => Text('Error: $e'),
+// );
+
+================================================================

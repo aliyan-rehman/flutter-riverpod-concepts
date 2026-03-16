@@ -1,0 +1,196 @@
+================================================================
+     Provider Dependencies in Flutter Riverpod
+================================================================
+
+WHAT IS IT?
+-----------
+Providers can watch or read other providers.
+One provider's value can depend on another provider's value.
+When the dependency changes → dependent provider updates automatically.
+
+
+================================================================
+TWO WAYS TO USE ANOTHER PROVIDER
+================================================================
+
+ref.watch  → reactive, rebuilds when dependency changes (use in provider body)
+ref.read   → one-time read, does NOT rebuild   (use in callbacks/actions only)
+
+
+================================================================
+SIMPLE EXAMPLE — Full Name from Two Providers
+================================================================
+
+final firstNameProvider = StateProvider<String>((ref) => 'John');
+final lastNameProvider  = StateProvider<String>((ref) => 'Doe');
+
+final fullNameProvider = Provider<String>((ref) {
+  final first = ref.watch(firstNameProvider);
+  final last  = ref.watch(lastNameProvider);
+  return '$first $last';
+});
+
+// Change firstNameProvider → fullNameProvider updates automatically ✅
+// In widget: ref.watch(fullNameProvider) → 'John Doe'
+
+
+================================================================
+REAL WORLD EXAMPLE — Filter a List
+================================================================
+
+final allProductsProvider = Provider<List<String>>((ref) {
+  return ['Apple', 'Banana', 'Avocado', 'Blueberry', 'Apricot'];
+});
+
+final searchQueryProvider = StateProvider<String>((ref) => '');
+
+final filteredProductsProvider = Provider<List<String>>((ref) {
+  final all   = ref.watch(allProductsProvider);
+  final query = ref.watch(searchQueryProvider);
+
+  if (query.isEmpty) return all;
+  return all
+      .where((p) => p.toLowerCase().contains(query.toLowerCase()))
+      .toList();
+});
+
+// In widget — update search:
+//   ref.read(searchQueryProvider.notifier).state = 'ap';
+
+// In widget — show list:
+//   final products = ref.watch(filteredProductsProvider);
+//   Typing in search → filteredProductsProvider updates automatically ✅
+
+
+================================================================
+FUTUREPROVIDER DEPENDING ON ANOTHER PROVIDER
+================================================================
+
+final currentUserIdProvider = StateProvider<int>((ref) => 1);
+
+final userPostsProvider = FutureProvider<List<String>>((ref) async {
+  final userId = ref.watch(currentUserIdProvider); // dependency
+
+  final response = await http.get(
+    Uri.parse('https://jsonplaceholder.typicode.com/posts?userId=$userId'),
+  );
+
+  return (jsonDecode(response.body) as List)
+      .map((p) => p['title'] as String)
+      .toList();
+});
+
+// Change currentUserIdProvider → userPostsProvider re-fetches automatically ✅
+
+
+================================================================
+CHAINING MULTIPLE DEPENDENCIES
+================================================================
+
+final configProvider = Provider<String>((ref) => 'https://api.example.com');
+final tokenProvider  = StateProvider<String>((ref) => 'abc123');
+
+final apiClientProvider = Provider<String>((ref) {
+  final base  = ref.watch(configProvider);
+  final token = ref.watch(tokenProvider);
+  return '$base?token=$token';
+});
+
+final dataProvider = FutureProvider<String>((ref) async {
+  final url = ref.watch(apiClientProvider); // depends on apiClientProvider
+  final res = await http.get(Uri.parse(url));
+  return res.body;
+});
+
+// Dependency chain:
+//   configProvider  ──┐
+//                     ├──▶  apiClientProvider  ──▶  dataProvider  ──▶  UI
+//   tokenProvider   ──┘
+//
+// Change tokenProvider → apiClientProvider updates → dataProvider re-fetches ✅
+
+
+================================================================
+ref.watch vs ref.read — THE GOLDEN RULE
+================================================================
+
+✅ ref.watch inside provider body  → reactive, use this always in providers
+✅ ref.read  inside callbacks      → one-time, use in buttons/actions only
+❌ ref.read  inside provider body  → won't update, this is a bug!
+
+// ✅ Correct
+final fullName = Provider((ref) {
+  return ref.watch(firstNameProvider); // updates when changed
+});
+
+// ✅ Correct
+onPressed: () {
+  final name = ref.read(firstNameProvider); // one time
+}
+
+// ❌ Wrong — provider won't react to changes
+final fullName = Provider((ref) {
+  return ref.read(firstNameProvider); // BUG! never do this
+});
+
+
+================================================================
+DEPENDENCY FLOW DIAGRAM
+================================================================
+
+searchQueryProvider  ──┐
+                       ├──▶  filteredProductsProvider  ──▶  UI
+allProductsProvider  ──┘
+
+Change any provider on the left → everything to the right updates.
+This is reactive programming with Riverpod.
+
+
+================================================================
+QUICK CHEAT SHEET
+================================================================
+
+Watch another provider:
+  final value = ref.watch(otherProvider);
+
+Watch inside FutureProvider:
+  final id = ref.watch(idProvider);
+  final data = await fetchData(id); // re-fetches when id changes
+
+Chain providers:
+  providerA → providerB watches A → providerC watches B
+  Change A → B updates → C updates → UI rebuilds
+
+Never:
+  ref.read(anything) inside a provider body
+
+
+================================================================
+FULL SNIPPET (copy-paste practice)
+================================================================
+
+// 1. Base data
+final allItemsProvider = Provider<List<String>>((ref) {
+  return ['Flutter', 'Dart', 'Firebase', 'Riverpod', 'FastAPI'];
+});
+
+// 2. Filter query
+final queryProvider = StateProvider<String>((ref) => '');
+
+// 3. Filtered result — depends on both
+final filteredItemsProvider = Provider<List<String>>((ref) {
+  final items = ref.watch(allItemsProvider);
+  final query = ref.watch(queryProvider);
+  if (query.isEmpty) return items;
+  return items.where((i) => i.toLowerCase().contains(query.toLowerCase())).toList();
+});
+
+// In widget:
+// TextField(
+//   onChanged: (v) => ref.read(queryProvider.notifier).state = v,
+// );
+// final items = ref.watch(filteredItemsProvider);
+
+================================================================
+END OF CHAPTER 12
+================================================================
